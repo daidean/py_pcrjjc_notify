@@ -230,6 +230,9 @@ class PcrWatcher:
 
                 # 登录成功后，若无停止信号，则循环查询用户信息
                 try:
+                    # 记录查询错误的次数
+                    self.user_query_error_count = 0
+
                     while not self.watch_event.is_set():
                         # 每轮查询中，是否存在排名变动
                         user_rank_has_changed = False
@@ -243,6 +246,9 @@ class PcrWatcher:
                                 # 获取用户当前排名进行对比
                                 query_resp = await self.query(user_id)
                                 query_info = query_resp["user_info"]
+
+                                # 查询成功则将查询错处次数清零
+                                self.user_query_error_count = 0
 
                                 query_user_name = query_info["user_name"]
                                 query_jjc_rank = query_info["arena_rank"]
@@ -301,6 +307,12 @@ class PcrWatcher:
                                 )
 
                             except Exception as e:
+                                # 记录异常次数
+                                self.user_query_error_count += 1
+                                if self.user_query_error_count < 3:
+                                    continue
+
+                                # 异常次数超过阈值则发送通知
                                 await self.workwx.send_message(f"用户信息查询失败：{e}")
                                 break
 
@@ -308,14 +320,14 @@ class PcrWatcher:
                         if user_rank_has_changed:
                             await self.workwx.send_message("监听用户存在排名变动")
 
-                        # 查询间隔
+                        # 查询循环间隔
                         await asyncio.sleep(3)
 
                 except Exception as e:
                     print(f"workwx error: {e}")
 
                 finally:
-                    # 查询间隔
+                    # 登录循环间隔
                     await asyncio.sleep(3)
 
             except (asyncio.CancelledError, KeyboardInterrupt):
