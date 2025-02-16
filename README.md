@@ -26,7 +26,7 @@ pcrjjc2封装，用于对接企业微信WebHook机器人
     vim .env
     ```
 
-    ```toml
+    ```python
     # 将WORKWX_WEBHOOK参数替换为实际链接
     WORKWX_WEBHOOK=https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
 

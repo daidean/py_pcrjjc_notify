@@ -1,10 +1,12 @@
 import os
 import json
+import signal
 import sys
 import httpx
 import asyncio
 
 from dotenv import load_dotenv
+from datetime import datetime
 
 
 def init_pcrjjc2():
@@ -33,10 +35,10 @@ def init_pcrjjc2():
     # 2、调整模块版本信息写入路径，避免pcrjjc2仓库产生修改（强迫症）
     client.config = os.path.join(os.path.dirname(__file__), "pcr_version.txt")
 
-    return client.bsdkclient, client.pcrclient, client.ApiException
+    return client.bsdkclient, client.pcrclient
 
 
-bsdkclient, pcrclient, ApiException = init_pcrjjc2()
+bsdkclient, pcrclient = init_pcrjjc2()
 
 
 class WorkWx:
@@ -50,8 +52,11 @@ class WorkWx:
         self.queue = asyncio.Queue()
 
     async def send_message(self, message: str, delay=False) -> None:
-        # 加个标记
-        message = f"【PCR】{message}"
+        # 打印日志
+        print(f"workwx: {message}")
+
+        # 增加时间和标记
+        message = f"{datetime.now()}\n【PCR】{message}"
 
         # 延迟消息仅推送进队列，暂不发送
         if delay:
@@ -101,6 +106,7 @@ class PcrWatcher:
 
         # 监听事件，用于停止服务时传递信号给协程
         self.watch_event = asyncio.Event()
+        signal.signal(signal.SIGTERM, self.watch_stop)
 
     async def _verify_captcha(self, gt, challenge, userid) -> None:
         """
@@ -146,7 +152,7 @@ class PcrWatcher:
                         query_waittime = min(query_queue, 3) * 10
 
                         await self.workwx.send_message(
-                            "PCR登录验证：自动过码队列中", delay=True
+                            "登录验证：自动过码队列中", delay=True
                         )
                         await self.workwx.send_message(
                             f"当前位置：{query_queue}，等待{query_waittime}秒"
@@ -159,13 +165,13 @@ class PcrWatcher:
                     if query_info := query_data.get("info"):
                         # 过码异常则重新传参等进度
                         if query_info in ["fail", "url invalid"]:
-                            await self.workwx.send_message("PCR登录验证：自动过码失败")
+                            await self.workwx.send_message("登录验证：自动过码失败")
                             break
 
                         # 正在过码则等待5秒后重新查询
                         elif query_info == "in running":
                             await self.workwx.send_message(
-                                "PCR登录验证：自动过码运行中", delay=True
+                                "登录验证：自动过码运行中", delay=True
                             )
                             await asyncio.sleep(5)
                             continue
@@ -173,7 +179,7 @@ class PcrWatcher:
                         # 过码成功则返回相应参数
                         elif "validate" in query_info:
                             await self.workwx.send_message(
-                                "PCR登录验证：自动过码成功", delay=True
+                                "登录验证：自动过码成功", delay=True
                             )
                             return (
                                 query_info["challenge"],
@@ -181,10 +187,10 @@ class PcrWatcher:
                                 query_info["validate"],
                             )
             else:
-                await self.workwx.send_message("PCR登录验证：自动过码超时")
+                await self.workwx.send_message("登录验证：自动过码超时")
 
     async def _verify_error(self, message: str) -> None:
-        await self.workwx.send_message(f"PCR登录失败：{message}")
+        await self.workwx.send_message(f"登录失败：{message}")
 
     async def login(self) -> None:
         """
@@ -219,6 +225,7 @@ class PcrWatcher:
                     await self.login()
                 except Exception as e:
                     await self.workwx.send_message(f"登录异常：{e}")
+                    await asyncio.sleep(3)
                     continue
 
                 # 登录成功后，若无停止信号，则循环查询用户信息
@@ -294,14 +301,12 @@ class PcrWatcher:
                                 )
 
                             except Exception as e:
-                                await self.workwx.send_message(
-                                    f"PCR查询失败：{e}", delay=True
-                                )
+                                await self.workwx.send_message(f"用户信息查询失败：{e}")
                                 break
 
                         # 遍历完所有用户后，存在变动就汇总发送
                         if user_rank_has_changed:
-                            await self.workwx.send_message("PCR监听用户存在排名变动")
+                            await self.workwx.send_message("监听用户存在排名变动")
 
                         # 查询间隔
                         await asyncio.sleep(3)
@@ -316,9 +321,9 @@ class PcrWatcher:
             except (asyncio.CancelledError, KeyboardInterrupt):
                 # 接收到停止意图则传递停止信号
                 print(f"pcrclient: receive stop event")
-                await self.watch_stop()
+                self.watch_stop()
 
-    async def watch_stop(self) -> None:
+    def watch_stop(self, *args) -> None:
         """
         通过监听事件，传递停止服务信号
         """
