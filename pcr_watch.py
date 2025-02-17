@@ -266,29 +266,23 @@ class PcrWatcher:
                                 change_message = f"排名变动：{query_user_name}"
 
                                 if change_jjc:
-                                    change_jjc_diff = abs(
-                                        user_jjc_rank - query_jjc_rank
-                                    )
+                                    change_jjc_diff = user_jjc_rank - query_jjc_rank
                                     change_jjc_symbol = (
                                         "↓" if change_jjc_diff < 0 else "↑"
                                     )
                                     change_message += "\n普通竞技场"
-                                    change_message += (
-                                        f"（ {change_jjc_symbol} {change_jjc_diff} ）："
-                                    )
+                                    change_message += f"（ {change_jjc_symbol} {abs(change_jjc_diff)} ）："
                                     change_message += (
                                         f"{user_jjc_rank} ➜ {query_jjc_rank}"
                                     )
 
                                 if change_pjjc:
-                                    change_pjjc_diff = abs(
-                                        user_pjjc_rank - query_pjjc_rank
-                                    )
+                                    change_pjjc_diff = user_pjjc_rank - query_pjjc_rank
                                     change_pjjc_symbol = (
                                         "↓" if change_pjjc_diff < 0 else "↑"
                                     )
                                     change_message += "\n公主竞技场"
-                                    change_message += f"（ {change_pjjc_symbol} {change_pjjc_diff} ）："
+                                    change_message += f"（ {change_pjjc_symbol} {abs(change_pjjc_diff)} ）："
                                     change_message += (
                                         f"{user_pjjc_rank} ➜ {query_pjjc_rank}"
                                     )
