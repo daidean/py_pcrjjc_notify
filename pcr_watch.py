@@ -307,6 +307,11 @@ class PcrWatcher:
                                 )
 
                             except Exception as e:
+                                # 异常若提示返回标题，则直接重新登录
+                                if "回到标题界面" in str(e):
+                                    self.user_notify_error_count = 3
+                                    break
+
                                 # 记录异常次数
                                 self.user_query_error_count += 1
                                 if self.user_query_error_count < 3:
