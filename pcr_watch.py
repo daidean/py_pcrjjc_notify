@@ -1,9 +1,11 @@
 import os
-import json
-import signal
 import sys
+import json
+import types
 import httpx
+import signal
 import asyncio
+import importlib.util
 
 from dotenv import load_dotenv
 from datetime import datetime
@@ -19,10 +21,6 @@ def init_pcrjjc2():
 
     返回所需的B站SDK客户端和PCR客户端
     """
-
-    import sys
-    import types
-    import importlib.util
 
     module_spec = importlib.util.find_spec("pcrjjc2")
     module = types.ModuleType(module_spec.name)
@@ -102,7 +100,13 @@ class PcrWatcher:
 
         self.pcr_client = pcr_client
         self.pcr_cache = {watch_id: (0, 0) for watch_id in watch_ids}
+
         self.workwx = workwx
+
+        # 记录查询错误的次数
+        self.query_error_count = 0
+        # 跳过查询标记
+        self.query_skip_tag = False
 
         # 监听事件，用于停止服务时传递信号给协程
         self.watch_event = asyncio.Event()
@@ -217,132 +221,119 @@ class PcrWatcher:
         print("pcrclient: jjc watcher")
         print("pcrclient: server starting...")
 
-        # 仅在监听事件未传递停止信号时循环监听
+        # 登录循环
         while not self.watch_event.is_set():
             try:
-                # 监听开始，登录b站账号
                 try:
+                    # 登录b站账号
                     await self.login()
                 except Exception as e:
+                    # 登录失败则等待3秒后重试
                     await self.workwx.send_message(f"登录异常：{e}")
                     await asyncio.sleep(3)
                     continue
 
-                try:
-                    # 记录查询错误的次数
-                    self.user_query_error_count = 0
-                    # 记录上报错误的次数
-                    self.user_notify_error_count = 0
+                # 查询循环
+                while not self.watch_event.is_set():
+                    # 如果需要跳出查询循环，则重置标记并跳出循环
+                    if self.query_skip_tag:
+                        self.query_skip_tag = False
+                        break
 
-                    # 登录成功后，启动查询循环，获取用户信息
-                    while (
-                        not self.watch_event.is_set()  # 未出现停止信号
-                        and self.user_notify_error_count < 3  # 异常上报次数未超过阈值
-                    ):
-                        # 每轮查询中，是否存在排名变动
-                        user_rank_has_changed = False
+                    # 每轮查询中，监听用户的排名是否存在变动
+                    rank_has_changed = False
 
-                        # 遍历待监听用户ID以及排名
-                        for user_id, (
-                            user_jjc_rank,
-                            user_pjjc_rank,
-                        ) in self.pcr_cache.items():
-                            try:
-                                # 获取用户当前排名进行对比
-                                query_resp = await self.query(user_id)
-                                query_info = query_resp["user_info"]
+                    # 获取监听用户上一轮的排名
+                    for user_id, user_ranks in self.pcr_cache.items():
+                        user_jjc_rank, user_pjjc_rank = user_ranks
 
-                                # 查询成功则将查询错误次数和上报错误次数清零
-                                self.user_query_error_count = 0
-                                self.user_notify_error_count = 0
+                        try:
+                            # 查询监听用户的信息
+                            query_resp = await self.query(user_id)
+                            query_info = query_resp["user_info"]
 
-                                query_user_name = query_info["user_name"]
-                                query_jjc_rank = query_info["arena_rank"]
-                                query_pjjc_rank = query_info["grand_arena_rank"]
+                            # 查询成功则清空查询错误次数
+                            self.query_error_count = 0
 
-                                change_jjc = user_jjc_rank != query_jjc_rank
-                                change_pjjc = user_pjjc_rank != query_pjjc_rank
+                            # 获取监听用户的昵称和排名
+                            query_user_name = query_info["user_name"]
+                            query_jjc_rank = query_info["arena_rank"]
+                            query_pjjc_rank = query_info["grand_arena_rank"]
 
-                                # jjc和pjjc无变动时跳过
-                                if not change_jjc and not change_pjjc:
-                                    continue
+                            # 判断排名是否有变动
+                            change_jjc = user_jjc_rank != query_jjc_rank
+                            change_pjjc = user_pjjc_rank != query_pjjc_rank
 
-                                # 有变动时，根据情况进行提醒
-                                user_rank_has_changed = True
-                                change_message = f"排名变动：{query_user_name}"
+                            # 无变动时跳过
+                            if not change_jjc and not change_pjjc:
+                                continue
 
-                                if change_jjc:
-                                    change_jjc_diff = user_jjc_rank - query_jjc_rank
-                                    change_jjc_symbol = (
-                                        "↓" if change_jjc_diff < 0 else "↑"
-                                    )
-                                    change_message += "\n普通竞技场"
-                                    change_message += f"（ {change_jjc_symbol} {abs(change_jjc_diff)} ）："
-                                    change_message += (
-                                        f"{user_jjc_rank} ➜ {query_jjc_rank}"
-                                    )
+                            # 有变动时，根据情况进行提醒
+                            rank_has_changed = True
+                            change_msg = f"排名变动：{query_user_name}"
 
-                                if change_pjjc:
-                                    change_pjjc_diff = user_pjjc_rank - query_pjjc_rank
-                                    change_pjjc_symbol = (
-                                        "↓" if change_pjjc_diff < 0 else "↑"
-                                    )
-                                    change_message += "\n公主竞技场"
-                                    change_message += f"（ {change_pjjc_symbol} {abs(change_pjjc_diff)} ）："
-                                    change_message += (
-                                        f"{user_pjjc_rank} ➜ {query_pjjc_rank}"
-                                    )
+                            # 处理排名变动提示信息
+                            if change_jjc:
+                                change_diff = user_jjc_rank - query_jjc_rank
+                                change_symbol = "↓" if change_diff < 0 else "↑"
+                                change_diff = abs(change_diff)
 
-                                # 更新用户排名
-                                self.pcr_cache[user_id] = (
-                                    query_jjc_rank,
-                                    query_pjjc_rank,
-                                )
+                                change_msg += "\n普通竞技场"
+                                change_msg += f"（ {change_symbol} {change_diff} ）："
+                                change_msg += f"{user_jjc_rank} ➜ {query_jjc_rank}"
 
-                                # 可能涉及监听多用户，变动提醒临时缓存
-                                # 因为个人使用，监听用户量少，所以优先遍历完所有用户再统一发送提醒
-                                # 如果是监听大量用户，这个地方可能得优化下
-                                await self.workwx.send_message(
-                                    change_message, delay=True
-                                )
+                            if change_pjjc:
+                                change_diff = user_pjjc_rank - query_pjjc_rank
+                                change_symbol = "↓" if change_diff < 0 else "↑"
+                                change_diff = abs(change_diff)
 
-                            except Exception as e:
-                                # 异常若提示返回标题，则直接重新登录
-                                if "回到标题界面" in str(e):
-                                    self.user_notify_error_count = 3
-                                    break
+                                change_msg += "\n公主竞技场"
+                                change_msg += f"（ {change_symbol} {change_diff} ）："
+                                change_msg += f"{user_pjjc_rank} ➜ {query_pjjc_rank}"
 
-                                # 记录异常次数
-                                self.user_query_error_count += 1
-                                if self.user_query_error_count < 3:
-                                    # 异常次数在阈值内则先跳过
-                                    continue
+                            # 更新用户排名
+                            self.pcr_cache[user_id] = (query_jjc_rank, query_pjjc_rank)
 
-                                # 异常次数超过阈值则发送通知
+                            # 可能涉及监听多用户，变动提醒临时缓存
+                            # 因为个人使用，监听用户量少，所以优先遍历完所有用户再统一发送提醒
+                            # 如果是监听大量用户，这个地方可能得优化下
+                            await self.workwx.send_message(change_msg, delay=True)
+
+                        except Exception as e:
+                            # 记录查询错误次数
+                            self.query_error_count += 1
+                            # 查询错误次数超过阈值则发送通知并重置查询错误次数
+                            if self.query_error_count > 3:
                                 await self.workwx.send_message(f"用户信息查询失败：{e}")
-                                # 并记录上报次数并清空查询错误次数
-                                self.user_query_error_count = 0
-                                self.user_notify_error_count += 1
-                                break
+                                self.query_error_count = 0
 
-                        # 遍历完所有用户后，存在变动就汇总发送
-                        if user_rank_has_changed:
-                            await self.workwx.send_message("监听用户存在排名变动")
+                            # 异常信息中若提示返回标题，则标记跳出查询循环并发送通知
+                            if "回到标题界面" in str(e):
+                                self.query_skip_tag = True
+                                await self.workwx.send_message(f"登录失效：{e}")
 
-                        # 查询循环间隔
-                        await asyncio.sleep(3)
+                    # 查询完所有监听用户后，若存在变动就汇总发送
+                    if rank_has_changed:
+                        await self.workwx.send_message("监听用户存在排名变动")
 
-                except Exception as e:
-                    print(f"workwx error: {e}")
-
-                finally:
-                    # 登录循环间隔
+                    # 查询循环间隔
                     await asyncio.sleep(3)
 
-            except (asyncio.CancelledError, KeyboardInterrupt):
-                # 接收到停止意图则传递停止信号
-                print(f"pcrclient: receive stop event")
+                # 登录循环间隔
+                await asyncio.sleep(3)
+
+            # 为登录循环中异常处理中可能出现的异常进行兜底
+            # 循环中的异常处理会调用workwx发送信息，但不能保证workwx正常
+            # 当发送信息出现异常时直接打印
+            except Exception as e:
+                print(f"workwx error: {e}")
+
+            # 其他异常情况，停止服务
+            except (KeyboardInterrupt, asyncio.CancelledError):
                 self.watch_stop()
+
+        # 登录循环结束，打印服务停止信息
+        print("pcrclient: server stoped!")
 
     def watch_stop(self, *args) -> None:
         """
@@ -350,7 +341,6 @@ class PcrWatcher:
         """
         print("pcrclient: server stoping...")
         self.watch_event.set()
-        print("pcrclient: server stoped!")
 
 
 async def main():
