@@ -9,6 +9,7 @@ import pathlib
 import asyncio
 import importlib.util
 
+from loguru import logger
 from dotenv import load_dotenv
 from datetime import datetime
 
@@ -72,7 +73,7 @@ class WorkWx:
 
     async def send_message(self, message: str, delay=False) -> None:
         # 打印日志
-        print(f"workwx: {message}")
+        logger.info(f"企业微信发送: {message}")
 
         # 增加时间和标记
         message = f"{datetime.now()}\n【PCR】{message}"
@@ -132,6 +133,8 @@ class PcrWatcher:
         # 监听事件，用于停止服务时传递信号给协程
         self.watch_event = asyncio.Event()
         signal.signal(signal.SIGTERM, self.watch_stop)
+
+        logger.info("客户端初始化完成")
 
     async def _verify_captcha(self, gt, challenge, userid) -> None:
         """
@@ -239,8 +242,7 @@ class PcrWatcher:
         return query_resp
 
     async def watch(self) -> None:
-        print("pcrclient: jjc watcher")
-        print("pcrclient: server starting...")
+        logger.info("客户端监听开始")
 
         # 登录循环
         while not self.watch_event.is_set():
@@ -287,6 +289,9 @@ class PcrWatcher:
 
                             # 无变动时跳过
                             if not change_jjc and not change_pjjc:
+                                logger.debug(
+                                    f"{query_user_name}监听排名无变动, JJC:{query_jjc_rank}, PJJC:{query_pjjc_rank}"
+                                )
                                 continue
 
                             # 有变动时，根据情况进行提醒
@@ -347,20 +352,20 @@ class PcrWatcher:
             # 循环中的异常处理会调用workwx发送信息，但不能保证workwx正常
             # 当发送信息出现异常时直接打印
             except Exception as e:
-                print(f"workwx error: {e}")
+                logger.error(f"企业微信异常：{e}")
 
             # 其他异常情况，停止服务
             except (KeyboardInterrupt, asyncio.CancelledError):
                 self.watch_stop()
 
         # 登录循环结束，打印服务停止信息
-        print("pcrclient: server stoped!")
+        logger.info("客户端监听结束")
 
     def watch_stop(self, *args) -> None:
         """
         通过监听事件，传递停止服务信号
         """
-        print("pcrclient: server stoping...")
+        logger.info("客户端监听停止中")
         self.watch_event.set()
 
 
