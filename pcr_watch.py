@@ -4,6 +4,8 @@ import json
 import types
 import httpx
 import signal
+import random
+import pathlib
 import asyncio
 import importlib.util
 
@@ -14,24 +16,43 @@ from datetime import datetime
 def init_pcrjjc2():
     """
     初始化pcrjjc2模块
-
-    1、通过提前引入，规避模块中的init执行
-
-    2、调整模块版本信息写入路径，避免pcrjjc2仓库产生修改（强迫症）
-
-    返回所需的B站SDK客户端和PCR客户端
     """
 
+    # 1、替换加解密的密钥 20250929更新版本
+    old_key = "ha4nBYA2APUD6Uv1"
+    new_key = "7Fk9Lm3Np8Qr4Sv2"
+    fix_file = pathlib.Path("pcrjjc2/pcrclient.py")
+    fix_text = fix_file.read_text("utf-8")
+    if new_key not in fix_text:
+        fix_text = fix_text.replace(old_key, new_key)
+        fix_file.write_text(fix_text, "utf-8")
+
+    # 2、通过提前引入，规避模块中的init执行
     module_spec = importlib.util.find_spec("pcrjjc2")
     module = types.ModuleType(module_spec.name)
     module.__path__ = module_spec.submodule_search_locations
-    # 1、通过提前引入，规避模块中的init执行
     sys.modules[module_spec.name] = module
 
     import pcrjjc2.pcrclient as client
 
-    # 2、调整模块版本信息写入路径，避免pcrjjc2仓库产生修改（强迫症）
+    # 3、调整模块版本信息写入路径，避免pcrjjc2仓库产生修改（强迫症）
     client.config = os.path.join(os.path.dirname(__file__), "pcr_version.txt")
+
+    # 4、调整客户端信息
+    client.defaultHeaders["APP-VER"] = "99.9.9"
+    client.defaultHeaders["DEVICE-ID"] = os.environ.get(
+        "Device_ID", "00ABCD123456ABCD123456ABCD123456"
+    )
+    client.defaultHeaders["DEVICE-NAME"] = os.environ.get(
+        "Device_Type", "Huawei Meta X"
+    )
+    client.apiroot = random.choice(
+        [
+            "https://le1-prod-all-gs-gzlj.bilibiligame.net",
+            "https://l2-prod-all-gs-gzlj.bilibiligame.net",
+            "https://l3-prod-all-gs-gzlj.bilibiligame.net",
+        ]
+    )
 
     return client.bsdkclient, client.pcrclient
 

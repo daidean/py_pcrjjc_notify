@@ -7,15 +7,15 @@ pcrjjc2封装，用于对接企业微信WebHook机器人
 
     ```bash
     # 克隆本仓库
-    git clone https://github.com/daidean/pcrjjc2-workwx.git
+    git clone https://github.com/daidean/py_pcrjjc_notify.git
 
-    # 克隆pcrjjc2仓库到仓库根目录下
-    cd pcrjjc2-workwx
-    git clone https://github.com/cc004/pcrjjc2.git
+    # 同步依赖仓库
+    cd py_pcrjjc_notify
+    git submodule update --init --recursive
 
-    # 新建环境，安装依赖
-    python -m venv .venv
-    .venv/bin/pip -r requirements.txt
+    # 新建环境，安装依赖库
+    pip install uv
+    uv sync
     ```
 
 1. 配置参数
@@ -36,6 +36,10 @@ pcrjjc2封装，用于对接企业微信WebHook机器人
 
     # 若有需要，自行改写监听用户清单文件路径
     PCR_WATCH_PATH=pcr_watch_ids.json
+
+    # 根据需要填写设备ID和类型
+    Device_ID=00ABCD123456ABCD123456ABCD123456
+    Device_Type='Huawei Meta X'
     ```
 
 2. 填写待监听用户清单
@@ -54,7 +58,7 @@ pcrjjc2封装，用于对接企业微信WebHook机器人
 3. 运行监听脚本
 
     ```bash
-    .venv/bin/python pcr_watch.py
+    uv run pcr_watch.py
     ```
 
 4. 预期效果
@@ -72,8 +76,6 @@ pcrjjc2封装，用于对接企业微信WebHook机器人
 
     Bot:    【PCR】PCR登录验证：自动过码成功
 
-            【PCR】登录异常：版本已更新:7.7.2
-    
     Bot:    【PCR】登录中
 
             【PCR】登录成功
