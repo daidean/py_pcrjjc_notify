@@ -57,8 +57,8 @@ async def post_data(path: str, headers: dict, data: any) -> bytes:
 class AccountInfo:
     account: str
     password: str
-    platform: int  # 2 is indicates android platform
-    channel: int  # 1 is indicates bilibili channel
+    platform: int = 2  # 2 is indicates android platform
+    channel: int = 1  # 1 is indicates bilibili channel
 
 
 class BilibiliClient:
