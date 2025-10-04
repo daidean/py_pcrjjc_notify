@@ -3,7 +3,7 @@ name = "py-pcrjjc-notify"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.13"
 dependencies = [
     "httpx>=0.28.1",
     "loguru>=0.7.3",
@@ -11,7 +11,6 @@ dependencies = [
     "pycryptodome>=3.23.0",
     "python-dateutil>=2.9.0.post0",
     "python-dotenv>=1.1.1",
-    "requests>=2.32.5",
 ]
 
 [[tool.uv.index]]
