@@ -41,7 +41,7 @@ class AutoCaptchaVerifier:
                     query_resp = await client.get(url)
                     query_data = query_resp.json()
                 except Exception as e:
-                    await self.notifyer.notify(f"自动过码进展查询失败: {e}")
+                    await self.notifyer.notify(f"自动过码进展查询失败: {e}, 重试中")
                     continue
 
                 # 若响应表示还在队列中，则最多等待30秒后再重新查询进度
