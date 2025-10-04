@@ -1,5 +1,7 @@
 import asyncio
+
 from httpx import AsyncClient
+from loguru import logger
 
 from .notifyer import Notifyer
 
@@ -7,6 +9,7 @@ from .notifyer import Notifyer
 class AutoCaptchaVerifier:
     def __init__(self, notifyer: Notifyer):
         self.notifyer = notifyer
+        logger.info("自动过码平台已初始化")
 
     async def verify(self, gt: str, challenge: str, userid: str) -> None:
         url = f"https://pcrd.tencentbot.top/geetest_renew?captcha_type=1"
@@ -24,9 +27,11 @@ class AutoCaptchaVerifier:
                 resp_data = resp.json()
                 resp_uuid = resp_data["uuid"]
 
-                await self.notifyer.notify(f"自动过码中: {resp_uuid}")
+                logger.info(f"自动过码请求已接受，{resp_uuid}")
+                await self.notifyer.notify(f"自动过码中：{resp_uuid}")
             except Exception as e:
-                await self.notifyer.notify(f"自动过码请求失败: {e}")
+                logger.error(f"自动过码请求失败，{e}")
+                await self.notifyer.notify(f"自动过码请求失败：{e}")
                 return
 
             # 拿到验证码对应的uuid
@@ -40,8 +45,10 @@ class AutoCaptchaVerifier:
                     # 通过uuid查询平台过码进度
                     query_resp = await client.get(url)
                     query_data = query_resp.json()
+                    logger.debug(f"自动过码进展查询成功，{query_data}")
                 except Exception as e:
-                    await self.notifyer.notify(f"自动过码进展查询失败: {e}, 重试中")
+                    logger.error("自动过码进展查询失败，重试中")
+                    await self.notifyer.notify(f"自动过码进展查询失败, 重试中")
                     continue
 
                 # 若响应表示还在队列中，则最多等待30秒后再重新查询进度
@@ -49,8 +56,11 @@ class AutoCaptchaVerifier:
                     queue_num = int(queue_num)
                     wait_time = min(queue_num, 3) * 10
 
+                    logger.info(
+                        f"自动过码队列位置：{queue_num}，等待{wait_time}秒重新获取进展"
+                    )
                     await self.notifyer.notify(
-                        f"自动过码队列位置: {queue_num}, 等待{wait_time}秒"
+                        f"自动过码队列位置：{queue_num}，等待{wait_time}秒重新获取进展"
                     )
                     await asyncio.sleep(wait_time)
                     continue
@@ -59,17 +69,20 @@ class AutoCaptchaVerifier:
                 if query_info := query_data.get("info"):
                     # 过码异常则重新传参等进度
                     if query_info in ["fail", "url invalid"]:
+                        logger.error("自动过码失败, 请尝试其他方案")
                         await self.notifyer.notify("自动过码失败, 请尝试其他方案")
                         break
 
                     # 正在过码则等待5秒后重新查询
                     elif query_info == "in running":
+                        logger.info("自动过码中, 等待5秒后重新查询")
                         await self.notifyer.notify("自动过码中, 等待5秒后重新查询")
                         await asyncio.sleep(5)
                         continue
 
                     # 过码成功则返回相应参数
                     elif "validate" in query_info:
+                        logger.info("自动过码成功")
                         await self.notifyer.notify("自动过码成功")
                         return (
                             query_info["challenge"],
@@ -78,4 +91,5 @@ class AutoCaptchaVerifier:
                         )
 
             else:
+                logger.error("自动过码超时, 请尝试其他方案")
                 await self.notifyer.notify("自动过码超时, 请尝试其他方案")

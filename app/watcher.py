@@ -1,8 +1,9 @@
 import asyncio
 from dataclasses import dataclass
 from typing import Self
-from .notifyer import Notifyer
+from loguru import logger
 
+from .notifyer import Notifyer
 from sdk.pcrclient import PcrClient
 
 
@@ -37,8 +38,12 @@ class RankWatcher:
 
         self.loop_switch = asyncio.Event()
 
+        logger.info("排名监听功能已初始化")
+
     def loop_stop(self) -> None:
+        logger.info("排名监听功能关闭中")
         self.loop_switch.set()
+        logger.info("排名监听功能已关闭")
 
     async def loop_exec(self) -> None:
         while not self.loop_switch.is_set():
@@ -58,6 +63,7 @@ class RankWatcher:
     async def check_rank(self, user_id: int) -> None:
         new_info = await self.query_rank(user_id)
         old_info = self.watch_list[user_id]
+        logger.debug(new_info)
 
         if old_info.user_name != new_info.user_name:
             self.watch_list[user_id].user_name = new_info.user_name
@@ -79,6 +85,7 @@ class RankWatcher:
             diff_message += f"{old_info.rank_pjjc} ➜ {new_info.rank_pjjc}"
 
         if diff_message:
+            logger.info(f"监听排名有变动{diff_message}")
             self.watch_list[user_id].update(new_info)
             diff_message = f"{new_info.user_name}{diff_message}"
             await self.notifyer.notify(diff_message)

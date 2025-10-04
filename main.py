@@ -1,5 +1,6 @@
 import os
 import asyncio
+import sys
 
 from dotenv import load_dotenv
 from loguru import logger
@@ -8,6 +9,9 @@ from sdk.pcrclient import AccountInfo, BilibiliClient, PcrClient
 from app.verifier import AutoCaptchaVerifier
 from app.notifyer import WorkwxNotifyer
 from app.watcher import RankWatcher
+
+logger.remove()
+logger.add(sys.stdout, level="INFO")
 
 
 async def main():

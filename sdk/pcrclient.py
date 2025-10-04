@@ -12,6 +12,7 @@ from base64 import b64encode, b64decode
 from datetime import datetime
 from dateutil.parser import parse
 from httpx import AsyncClient
+from loguru import logger
 
 from .bsgamesdk import login, captch
 
@@ -70,13 +71,17 @@ class BilibiliClient:
         self.captchaVerifier = captchaVerifier
         self.errorlogger = errorlogger
 
+        logger.info("B站客户端已初始化")
+
     async def login(self):
         while True:
             resp = await login(self.account, self.password, self.captchaVerifier)
 
             if resp["code"] == 0:
+                logger.info("B站客户端登录成功")
                 break
 
+            logger.error(f"B站客户端登录异常，{resp["message"]}")
             await self.errorlogger(resp["message"])
 
         return resp["uid"], resp["access_key"]
@@ -91,6 +96,8 @@ class PcrClient:
         self.shouldLoginPCR = True
         self.shouldLoginBilibili = True
 
+        logger.info("PCR客户端已初始化")
+
     async def bilibili_login(self):
         self.uid, self.access_key = await self.client.login()
         self.platform = self.client.platform
@@ -99,6 +106,8 @@ class PcrClient:
         self.headers["PLATFORM-ID"] = str(self.platform)
         self.headers["CHANNEL-ID"] = str(self.channel)
         self.shouldLoginBilibili = False
+
+        logger.info("PCR客户端已载入B站登录信息")
 
     @staticmethod
     def createkey() -> bytes:
@@ -199,11 +208,13 @@ class PcrClient:
             return resp_data
 
         except:
+            logger.error("PCR客户端调用接口异常，尝试重新登录")
             self.shouldLoginPCR = True
             return
 
     async def login(self):
         if self.shouldLoginBilibili:
+            logger.info("B站客户端未登录，尝试登录")
             await self.bilibili_login()
 
         if "REQUEST-ID" in self.headers:
@@ -219,6 +230,8 @@ class PcrClient:
 
             if "maintenance_message" not in manifest:
                 break
+
+            logger.info("PCR客户端处于维护状态，等待维护结束")
 
             try:
                 match = re.search(
@@ -256,6 +269,8 @@ class PcrClient:
             if resp["is_risk"] != 1:
                 break
 
+            logger.info("PCR客户端登录异常需要验证过码")
+
             while True:
                 try:
                     cap = await captch()
@@ -266,6 +281,7 @@ class PcrClient:
                     )
 
                     if not validate:
+                        logger.error("验证码验证异常，重新获取")
                         continue
 
                     resp = await self.call_api(
@@ -287,6 +303,7 @@ class PcrClient:
                     break
 
                 except:
+                    logger.error("PCR客户端验证异常，可能需要重新验证B站登录信息")
                     self.shouldLoginBilibili = True
                     return
         else:
@@ -302,6 +319,7 @@ class PcrClient:
         )
 
         if not gamestart["now_tutorial"]:
+            logger.info("PCR客户端当前账户未通过新手教程")
             return
 
         await self.call_api(
@@ -314,3 +332,4 @@ class PcrClient:
         )
 
         self.shouldLoginPCR = False
+        logger.info("PCR客户端登录验证成功")
