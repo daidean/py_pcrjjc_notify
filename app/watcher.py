@@ -88,4 +88,8 @@ class RankWatcher:
             logger.info(f"监听排名有变动{diff_message}")
             self.watch_list[user_id].update(new_info)
             diff_message = f"{new_info.user_name}{diff_message}"
+
+            if old_info.rank_jjc == old_info.rank_pjjc == 0:
+                return
+
             await self.notifyer.notify(diff_message)
