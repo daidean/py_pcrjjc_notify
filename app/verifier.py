@@ -11,7 +11,9 @@ class AutoCaptchaVerifier:
         self.notifyer = notifyer
         logger.info("自动过码平台已初始化")
 
-    async def verify(self, gt: str, challenge: str, userid: str) -> None:
+    async def verify(
+        self, gt: str, challenge: str, userid: str
+    ) -> tuple[str, str, str]:
         url = f"https://pcrd.tencentbot.top/geetest_renew?captcha_type=1"
         url += f"&challenge={challenge}&gt={gt}&userid={userid}&gs=1"
 
@@ -23,13 +25,13 @@ class AutoCaptchaVerifier:
         async with AsyncClient(headers=header) as client:
             try:
                 # 传递验证码参数给平台
-                resp = await client.get(url, timeout=5)
+                resp = await client.get(url)
                 resp_data = resp.json()
                 resp_uuid = resp_data["uuid"]
 
                 logger.info(f"自动过码请求已接受，{resp_uuid}")
             except Exception as e:
-                logger.error(f"自动过码请求失败，{e}")
+                logger.error(f"自动过码请求失败：{e}")
                 await self.notifyer.notify(f"自动过码请求失败：{e}")
                 return
 

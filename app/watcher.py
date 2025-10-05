@@ -22,11 +22,6 @@ class RankInfo:
             rank_pjjc=user_info["grand_arena_rank"],
         )
 
-    def update(self, new_info: Self) -> None:
-        self.user_name = new_info.user_name
-        self.rank_jjc = new_info.rank_jjc
-        self.rank_pjjc = new_info.rank_pjjc
-
 
 class RankWatcher:
     def __init__(self, watch_list: str, client: PcrClient, notifyer: Notifyer):
@@ -71,9 +66,6 @@ class RankWatcher:
         old_info = self.watch_list[user_id]
         logger.debug(new_info)
 
-        if old_info.user_name != new_info.user_name:
-            self.watch_list[user_id].user_name = new_info.user_name
-
         diff_message = ""
 
         if old_info.rank_jjc != new_info.rank_jjc:
@@ -91,9 +83,10 @@ class RankWatcher:
             diff_message += f"{old_info.rank_pjjc} ➜ {new_info.rank_pjjc}"
 
         if diff_message:
-            logger.info(f"监听排名有变动{diff_message}")
-            self.watch_list[user_id].update(new_info)
             diff_message = f"{new_info.user_name}{diff_message}"
+            logger.info(f"监听排名有变动，{"，".join(diff_message.split("\n"))}")
+
+            self.watch_list[user_id] = new_info
 
             if old_info.rank_jjc == old_info.rank_pjjc == 0:
                 return
