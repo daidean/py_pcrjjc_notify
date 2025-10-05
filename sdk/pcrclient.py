@@ -161,56 +161,49 @@ class PcrClient:
     ):
         key = self.createkey()
 
-        try:
-            if self.viewer_id is not None:
-                data["viewer_id"] = (
-                    b64encode(self.encrypt(str(self.viewer_id), key))
-                    if is_crypt
-                    else str(self.viewer_id)
-                )
-
-            resp = await post_data(
-                path,
-                self.headers,
-                PcrClient.pack(data, key) if is_crypt else str(data).encode("utf8"),
+        if self.viewer_id is not None:
+            data["viewer_id"] = (
+                b64encode(self.encrypt(str(self.viewer_id), key))
+                if is_crypt
+                else str(self.viewer_id)
             )
 
-            resp = PcrClient.unpack(resp)[0] if is_crypt else json.loads(resp)
+        resp = await post_data(
+            path,
+            self.headers,
+            PcrClient.pack(data, key) if is_crypt else str(data).encode("utf8"),
+        )
 
-            resp_headers = resp["data_headers"]
+        resp = PcrClient.unpack(resp)[0] if is_crypt else json.loads(resp)
 
-            if "sid" in resp_headers and resp_headers["sid"] != "":
-                md5sum = hashlib.md5()
-                md5sum.update((resp_headers["sid"] + "c!SID!n").encode("utf8"))
-                self.headers["SID"] = md5sum.hexdigest()
+        resp_headers = resp["data_headers"]
 
-            if "request_id" in resp_headers:
-                self.headers["REQUEST-ID"] = resp_headers["request_id"]
+        if "sid" in resp_headers and resp_headers["sid"] != "":
+            md5sum = hashlib.md5()
+            md5sum.update((resp_headers["sid"] + "c!SID!n").encode("utf8"))
+            self.headers["SID"] = md5sum.hexdigest()
 
-            if "viewer_id" in resp_headers:
-                self.viewer_id = resp_headers["viewer_id"]
+        if "request_id" in resp_headers:
+            self.headers["REQUEST-ID"] = resp_headers["request_id"]
 
-            if "/check/game_start" == path and "store_url" in resp_headers:
-                global pcr_version
-                pcr_version = re.search(
-                    r"_v?([4-9]\.\d\.\d).*?_",
-                    resp_headers["store_url"],
-                ).group(1)
-                self.headers["APP-VER"] = pcr_version
-                return
+        if "viewer_id" in resp_headers:
+            self.viewer_id = resp_headers["viewer_id"]
 
-            resp_data = resp["data"]
+        if "/check/game_start" == path and "store_url" in resp_headers:
+            global pcr_version
+            pcr_version = re.search(
+                r"_v?([4-9]\.\d\.\d).*?_",
+                resp_headers["store_url"],
+            ).group(1)
+            self.headers["APP-VER"] = pcr_version
+            logger.info(f"PCR客户端版本更新为：{pcr_version}")
 
-            if is_error and "server_error" in resp_data:
-                resp_data = resp_data["server_error"]
-                return
+        resp_data = resp["data"]
 
-            return resp_data
+        if is_error and "server_error" in resp_data:
+            raise Exception(resp_data["server_error"])
 
-        except:
-            logger.error("PCR客户端调用接口异常，尝试重新登录")
-            self.shouldLoginPCR = True
-            return
+        return resp_data
 
     async def login(self):
         if self.shouldLoginBilibili:
