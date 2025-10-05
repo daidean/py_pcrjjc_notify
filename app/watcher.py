@@ -47,18 +47,24 @@ class RankWatcher:
 
     async def loop_exec(self) -> None:
         while not self.loop_switch.is_set():
-            await asyncio.gather(
-                *[self.check_rank(rank_info) for rank_info in self.watch_list]
-            )
+            check_tasks = [self.check_rank(rank_info) for rank_info in self.watch_list]
+            await asyncio.gather(*check_tasks)
             await asyncio.sleep(3)
 
     async def query_rank(self, user_id: int) -> RankInfo:
-        return RankInfo.from_profile(
-            await self.client.call_api(
+        retry = 3
+        while retry:
+            retry -= 1
+            profile = await self.client.call_api(
                 "/profile/get_profile",
                 {"target_viewer_id": user_id},
             )
-        )
+            break
+        else:
+            logger.error("查询排名重试次数过多，请求异常")
+            raise Exception("查询排名重试次数过多，请求异常")
+
+        return RankInfo.from_profile(profile)
 
     async def check_rank(self, user_id: int) -> None:
         new_info = await self.query_rank(user_id)
