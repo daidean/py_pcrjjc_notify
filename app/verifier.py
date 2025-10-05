@@ -36,6 +36,7 @@ class AutoCaptchaVerifier:
             # 拿到验证码对应的uuid
             url = f"https://pcrd.tencentbot.top/check/{resp_uuid}"
             count = 0
+            await asyncio.sleep(3)
 
             while count < 10:
                 count += 1
