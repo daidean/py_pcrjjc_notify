@@ -28,7 +28,6 @@ class AutoCaptchaVerifier:
                 resp_uuid = resp_data["uuid"]
 
                 logger.info(f"自动过码请求已接受，{resp_uuid}")
-                await self.notifyer.notify(f"自动过码中：{resp_uuid}")
             except Exception as e:
                 logger.error(f"自动过码请求失败，{e}")
                 await self.notifyer.notify(f"自动过码请求失败：{e}")
@@ -45,7 +44,6 @@ class AutoCaptchaVerifier:
                     # 通过uuid查询平台过码进度
                     query_resp = await client.get(url)
                     query_data = query_resp.json()
-                    logger.debug(f"自动过码进展查询成功，{query_data}")
                 except Exception as e:
                     logger.error("自动过码进展查询失败，重试中")
                     await self.notifyer.notify(f"自动过码进展查询失败, 重试中")
@@ -57,9 +55,6 @@ class AutoCaptchaVerifier:
                     wait_time = min(queue_num, 3) * 10
 
                     logger.info(
-                        f"自动过码队列位置：{queue_num}，等待{wait_time}秒重新获取进展"
-                    )
-                    await self.notifyer.notify(
                         f"自动过码队列位置：{queue_num}，等待{wait_time}秒重新获取进展"
                     )
                     await asyncio.sleep(wait_time)
@@ -75,7 +70,6 @@ class AutoCaptchaVerifier:
 
                     # 正在过码则等待5秒后重新查询
                     elif query_info == "in running":
-                        logger.info("自动过码中, 等待5秒后重新查询")
                         await self.notifyer.notify("自动过码中, 等待5秒后重新查询")
                         await asyncio.sleep(5)
                         continue
@@ -83,7 +77,6 @@ class AutoCaptchaVerifier:
                     # 过码成功则返回相应参数
                     elif "validate" in query_info:
                         logger.info("自动过码成功")
-                        await self.notifyer.notify("自动过码成功")
                         return (
                             query_info["challenge"],
                             query_info["gt_user_id"],
