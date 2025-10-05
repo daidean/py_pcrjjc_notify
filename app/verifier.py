@@ -46,7 +46,6 @@ class AutoCaptchaVerifier:
                     query_data = query_resp.json()
                 except Exception as e:
                     logger.error("自动过码进展查询失败，重试中")
-                    await self.notifyer.notify(f"自动过码进展查询失败, 重试中")
                     continue
 
                 # 若响应表示还在队列中，则最多等待30秒后再重新查询进度
@@ -70,7 +69,7 @@ class AutoCaptchaVerifier:
 
                     # 正在过码则等待5秒后重新查询
                     elif query_info == "in running":
-                        await self.notifyer.notify("自动过码中, 等待5秒后重新查询")
+                        logger.info("自动过码中, 等待5秒后重新查询")
                         await asyncio.sleep(5)
                         continue
 
