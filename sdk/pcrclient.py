@@ -200,6 +200,21 @@ class PcrClient:
 
         resp_data = resp["data"]
 
+        if "maintenance_message" in resp_data:
+            logger.info("PCR客户端处于维护状态，等待维护结束")
+            try:
+                end_time = re.search(
+                    r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}",
+                    resp_data["maintenance_message"],
+                ).group()
+                end_time = parse(end_time)
+                wait_time = (end_time - datetime.now()).total_seconds()
+
+                logger.info(f"维护结束时间：{end_time}，等待{wait_time}秒")
+                await asyncio.sleep(wait_time)
+            except:
+                await asyncio.sleep(60)
+
         if is_error and "server_error" in resp_data:
             raise asyncio.CancelledError(resp_data["server_error"])
 
@@ -213,29 +228,12 @@ class PcrClient:
         if "REQUEST-ID" in self.headers:
             self.headers.pop("REQUEST-ID")
 
-        while True:
-            manifest = await self.call_api(
-                "/source_ini/get_maintenance_status?format=json",
-                {},
-                is_crypt=False,
-                is_error=False,
-            )
-
-            if "maintenance_message" not in manifest:
-                break
-
-            logger.info("PCR客户端处于维护状态，等待维护结束")
-
-            try:
-                match = re.search(
-                    r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}",
-                    manifest["maintenance_message"],
-                ).group()
-                end_time = parse(match)
-                while datetime.now() < end_time:
-                    await asyncio.sleep(1)
-            except:
-                await asyncio.sleep(60)
+        manifest = await self.call_api(
+            "/source_ini/get_maintenance_status?format=json",
+            {},
+            is_crypt=False,
+            is_error=False,
+        )
 
         manifest_ver = manifest["required_manifest_ver"]
         self.headers["MANIFEST-VER"] = str(manifest_ver)
