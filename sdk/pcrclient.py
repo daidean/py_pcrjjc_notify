@@ -201,7 +201,7 @@ class PcrClient:
         resp_data = resp["data"]
 
         if is_error and "server_error" in resp_data:
-            raise Exception(resp_data["server_error"])
+            raise asyncio.CancelledError(resp_data["server_error"])
 
         return resp_data
 

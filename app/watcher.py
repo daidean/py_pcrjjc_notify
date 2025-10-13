@@ -56,8 +56,7 @@ class RankWatcher:
             )
             break
         else:
-            logger.error("查询排名重试次数过多，请求异常")
-            raise Exception("查询排名重试次数过多，请求异常")
+            raise asyncio.CancelledError("查询排名重试次数过多，请求异常")
 
         return RankInfo.from_profile(profile)
 

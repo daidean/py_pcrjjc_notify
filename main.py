@@ -30,14 +30,12 @@ async def main():
         await pcr_client.login()
         logger.info("客户端登录成功, 排名监听中")
         await watcher.loop_exec()
-    except Exception as e:
-        logger.error(f"客户端异常：{e}")
-        raise
     except (
         TypeError,
         KeyboardInterrupt,
         asyncio.CancelledError,
-    ):
+    ) as e:
+        logger.error(f"客户端执行异常：{e}")
         logger.info("PCR竞技场排名监听停止中")
         watcher.loop_stop()
         await notifyer.loop_stop()
