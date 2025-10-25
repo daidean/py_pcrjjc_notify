@@ -87,7 +87,4 @@ class RankWatcher:
 
             self.watch_list[user_id] = new_info
 
-            if old_info.rank_jjc == old_info.rank_pjjc == 0:
-                return
-
             await self.notifyer.notify(diff_message)
