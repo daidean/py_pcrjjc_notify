@@ -24,8 +24,8 @@ class RankInfo:
 
 
 class RankWatcher:
-    def __init__(self, watch_list: str, client: PcrClient, notifyer: Notifyer):
-        watch_list = [int(user_id) for user_id in watch_list.split(",") if user_id]
+    def __init__(self, watch_list_str: str, client: PcrClient, notifyer: Notifyer):
+        watch_list = [int(user_id) for user_id in watch_list_str.split(",") if user_id]
         self.watch_list = {user_id: RankInfo("", 0, 0) for user_id in watch_list}
 
         self.client = client
