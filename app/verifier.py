@@ -33,15 +33,15 @@ class AutoCaptchaVerifier:
             except Exception as e:
                 logger.error(f"自动过码请求失败：{e}")
                 await self.notifyer.notify(f"自动过码请求失败：{e}")
-                return
+                return "", "", ""
 
             # 拿到验证码对应的uuid
             url = f"https://pcrd.tencentbot.top/check/{resp_uuid}"
-            count = 0
+            retry = 10
             await asyncio.sleep(3)
 
-            while count < 10:
-                count += 1
+            while retry > 0:
+                retry -= 1
 
                 try:
                     # 通过uuid查询平台过码进度
@@ -68,7 +68,7 @@ class AutoCaptchaVerifier:
                     if query_info in ["fail", "url invalid"]:
                         logger.error("自动过码失败, 请尝试其他方案")
                         await self.notifyer.notify("自动过码失败, 请尝试其他方案")
-                        break
+                        return "", "", ""
 
                     # 正在过码则等待5秒后重新查询
                     elif query_info == "in running":
@@ -88,3 +88,4 @@ class AutoCaptchaVerifier:
             else:
                 logger.error("自动过码超时, 请尝试其他方案")
                 await self.notifyer.notify("自动过码超时, 请尝试其他方案")
+                return "", "", ""
