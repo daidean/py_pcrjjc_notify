@@ -249,10 +249,9 @@ class PcrClient:
             is_error=False,
         )
 
-        retry_times = 0
-
-        while retry_times < 5:
-            retry_times += 1
+        retry = 3
+        while retry:
+            retry -= 1
 
             if "is_risk" not in resp:
                 break
