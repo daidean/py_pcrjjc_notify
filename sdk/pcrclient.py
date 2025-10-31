@@ -5,6 +5,7 @@ import hashlib
 import asyncio
 
 from dataclasses import dataclass
+from typing import Any
 from msgpack import packb, unpackb
 from random import randint, choice
 from Crypto.Cipher import AES
@@ -48,9 +49,9 @@ pcr_headers = {
 }
 
 
-async def post_data(path: str, headers: dict, data: bytes) -> bytes:
+async def post_data(path: str, headers: dict, data: Any) -> bytes:
     async with AsyncClient(headers=headers) as client:
-        resp = await client.post(f"{pcr_endpoint}{path}", content=data)
+        resp = await client.post(f"{pcr_endpoint}{path}", data=data)
         return resp.content
 
 
