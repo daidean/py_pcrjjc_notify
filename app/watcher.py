@@ -50,11 +50,14 @@ class RankWatcher:
         retry = 3
         while retry:
             retry -= 1
-            profile = await self.client.call_api(
-                "/profile/get_profile",
-                {"target_viewer_id": user_id},
-            )
-            break
+            try:
+                profile = await self.client.call_api(
+                    "/profile/get_profile",
+                    {"target_viewer_id": user_id},
+                )
+                break
+            except:
+                logger.error(f"排名查询失败，重试中")
         else:
             raise asyncio.CancelledError("查询排名重试次数过多，请求异常")
 
