@@ -48,9 +48,9 @@ pcr_headers = {
 }
 
 
-async def post_data(path: str, headers: dict, data: any) -> bytes:
+async def post_data(path: str, headers: dict, data: bytes) -> bytes:
     async with AsyncClient(headers=headers) as client:
-        resp = await client.post(f"{pcr_endpoint}{path}", data=data)
+        resp = await client.post(f"{pcr_endpoint}{path}", content=data)
         return resp.content
 
 
@@ -130,8 +130,8 @@ class PcrClient:
     @staticmethod
     def encrypt(data: str, key: bytes) -> bytes:
         aes = PcrClient.crypt_aes(key)
-        data = PcrClient.add_to_16(data.encode("utf8"))
-        return aes.encrypt(data) + key
+        encode_data = PcrClient.add_to_16(data.encode("utf8"))
+        return aes.encrypt(encode_data) + key
 
     @staticmethod
     def decrypt(data: bytes):
@@ -142,8 +142,9 @@ class PcrClient:
     @staticmethod
     def pack(data: object, key: bytes) -> bytes:
         aes = PcrClient.crypt_aes(key)
-        data = PcrClient.add_to_16(packb(data, use_bin_type=False))
-        return aes.encrypt(data) + key
+        encode_data = packb(data, use_bin_type=False) or b""
+        encode_data = PcrClient.add_to_16(encode_data)
+        return aes.encrypt(encode_data) + key
 
     @staticmethod
     def unpack(data: bytes):
@@ -168,11 +169,8 @@ class PcrClient:
                 else str(self.viewer_id)
             )
 
-        resp = await post_data(
-            path,
-            self.headers,
-            PcrClient.pack(data, key) if is_crypt else str(data).encode("utf8"),
-        )
+        reqt_data = PcrClient.pack(data, key) if is_crypt else str(data).encode("utf8")
+        resp = await post_data(path, self.headers, reqt_data)
 
         resp = PcrClient.unpack(resp)[0] if is_crypt else json.loads(resp)
 
