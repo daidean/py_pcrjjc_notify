@@ -2,6 +2,7 @@ import time
 import json
 import hashlib
 
+from typing import Any
 from urllib.parse import quote
 from httpx import AsyncClient
 
@@ -20,7 +21,7 @@ modollogin = '{"operators":"5","merchant_id":"1","isRoot":"0","domain_switch_cou
 modolcaptch = '{"operators":"5","merchant_id":"1","isRoot":"0","domain_switch_count":"0","sdk_type":"1","sdk_log_type":"1","timestamp":"1613035486182","support_abis":"x86,armeabi-v7a,armeabi","access_key":"","sdk_ver":"3.4.2","oaid":"","dp":"1280*720","original_domain":"","imei":"227656364311444","version":"1","udid":"KREhESMUIhUjFnJKNko2TDQFYlZkB3cdeQ==","apk_sign":"e89b158e4bcf988ebd09eb83f5378e87","platform_type":"3","old_buvid":"XZA2FA4AC240F665E2F27F603ABF98C615C29","android_id":"84567e2dda72d1d4","fingerprint":"","mac":"08:00:27:53:DD:12","server_id":"1592","domain":"line1-sdk-center-login-sh.biligame.net","app_id":"1370","version_code":"90","net":"4","pf_ver":"6.0.1","cur_buvid":"XZA2FA4AC240F665E2F27F603ABF98C615C29","c":"1","brand":"Android","client_timestamp":"1613035487431","channel_id":"1","uid":"","game_id":"1370","ver":"2.4.10","model":"MuMu"}'
 
 
-async def post_data(path: str, data: any) -> dict:
+async def post_data(path: str, data: Any) -> dict:
     async with AsyncClient(headers=bilibili_headers) as client:
         resp = await client.post(f"{bilibili_endpoint}{path}", data=data)
         return resp.json()
@@ -56,14 +57,14 @@ def sign_data(data: dict) -> str:
 
 async def login1(account: str, password: str):
     data = json.loads(modolrsa)
-    data = sign_data(data)
+    signed_data = sign_data(data)
+    rsa = await post_data("/api/client/rsa", signed_data)
 
-    rsa = await post_data("/api/client/rsa", data)
     rsa_key = rsa["rsa_key"]
     rsa_hash = rsa["hash"]
     rsa_pwd = rsacr.rsacreate(rsa_hash + password, rsa_key)
 
-    data: dict = json.loads(modollogin)
+    data = json.loads(modollogin)
     data.update(
         {
             "access_key": "",
@@ -75,9 +76,8 @@ async def login1(account: str, password: str):
             "pwd": rsa_pwd,
         }
     )
-    data = sign_data(data)
-
-    login = await post_data("/api/client/login", data)
+    signed_data = sign_data(data)
+    login = await post_data("/api/client/login", signed_data)
     return login
 
 
@@ -89,14 +89,14 @@ async def login2(
     validate: str,
 ):
     data = json.loads(modolrsa)
-    data = sign_data(data)
+    signed_data = sign_data(data)
+    rsa = await post_data("/api/client/rsa", signed_data)
 
-    rsa = await post_data("/api/client/rsa", data)
     rsa_key = rsa["rsa_key"]
     rsa_hash = rsa["hash"]
     rsa_pwd = rsacr.rsacreate(rsa_hash + password, rsa_key)
 
-    data: dict = json.loads(modollogin)
+    data = json.loads(modollogin)
     data.update(
         {
             "access_key": "",
@@ -109,17 +109,15 @@ async def login2(
             "pwd": rsa_pwd,
         }
     )
-    data = sign_data(data)
-
-    login = await post_data("/api/client/login", data)
+    signed_data = sign_data(data)
+    login = await post_data("/api/client/login", signed_data)
     return login
 
 
 async def captch():
     data = json.loads(modolcaptch)
-    data = sign_data(data)
-
-    captch = await post_data("/api/client/start_captcha", data)
+    signed_data = sign_data(data)
+    captch = await post_data("/api/client/start_captcha", signed_data)
     return captch
 
 
