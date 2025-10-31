@@ -189,27 +189,28 @@ class PcrClient:
 
         if "/check/game_start" == path and "store_url" in resp_headers:
             global pcr_version
-            pcr_version = re.search(
-                r"_v?([4-9]\.\d\.\d).*?_",
-                resp_headers["store_url"],
-            ).group(1)
-            self.headers["APP-VER"] = pcr_version
-            logger.info(f"PCR客户端版本更新为：{pcr_version}")
+            version_regex = r"_v?([4-9]\.\d\.\d).*?_"
+            if version := re.search(version_regex, resp_headers["store_url"]):
+                pcr_version = version.group(1)
+                self.headers["APP-VER"] = pcr_version
+                logger.info(f"PCR客户端版本更新为：{pcr_version}")
 
         resp_data = resp["data"]
 
         if "maintenance_message" in resp_data:
             logger.info("PCR客户端处于维护状态，等待维护结束")
             try:
-                end_time = re.search(
-                    r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}",
-                    resp_data["maintenance_message"],
-                ).group()
-                end_time = parse(end_time)
-                wait_time = (end_time - datetime.now()).total_seconds()
+                time_message = resp_data["maintenance_message"]
+                time_regex = r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}"
 
-                logger.info(f"维护结束时间：{end_time}，等待{wait_time}秒")
-                await asyncio.sleep(wait_time)
+                time_end = re.search(time_regex, time_message)
+                assert time_end
+
+                time_end = parse(time_end.group(1))
+                wait_sec = (time_end - datetime.now()).total_seconds()
+
+                logger.info(f"维护结束时间：{time_end}，等待{wait_sec}秒")
+                await asyncio.sleep(wait_sec)
             except:
                 await asyncio.sleep(60)
 
