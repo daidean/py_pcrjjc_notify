@@ -1,8 +1,8 @@
 import time
 import json
-import urllib
 import hashlib
 
+from urllib.parse import quote
 from httpx import AsyncClient
 
 from . import rsacr
@@ -38,7 +38,7 @@ def sign_data(data: dict) -> str:
 
     for key in data:
         if key == "pwd":
-            pwd = urllib.parse.quote(data["pwd"])
+            pwd = quote(data["pwd"])
             format_data += f"{key}={pwd}&"
         format_data += f"{key}={data[key]}&"
 
