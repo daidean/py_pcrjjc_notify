@@ -220,11 +220,7 @@ class PcrClient:
 
         return resp_data
 
-    async def login(self):
-        if self.shouldLoginBilibili:
-            logger.info("B站客户端未登录，尝试登录")
-            await self.bilibili_login()
-
+    async def pcr_login(self):
         if "REQUEST-ID" in self.headers:
             self.headers.pop("REQUEST-ID")
 

@@ -42,6 +42,13 @@ class RankWatcher:
 
     async def loop_exec(self) -> None:
         while not self.loop_switch.is_set():
+            if self.client.shouldLoginBilibili:
+                await self.client.bilibili_login()
+                continue
+            if self.client.shouldLoginPCR:
+                await self.client.pcr_login()
+                continue
+
             check_tasks = [self.check_rank(rank_info) for rank_info in self.watch_list]
             await asyncio.gather(*check_tasks)
             await asyncio.sleep(3)

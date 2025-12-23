@@ -27,8 +27,7 @@ async def main():
     watcher = RankWatcher(os.environ["PCR_WATCH_LIST"], pcr_client, notifyer)
 
     try:
-        await pcr_client.login()
-        logger.info("客户端登录成功, 排名监听中")
+        logger.info("客户端初始化成功, 排名监听中")
         await watcher.loop_exec()
     except (
         TypeError,
