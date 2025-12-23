@@ -39,7 +39,7 @@ class AutoCaptchaVerifier:
             url = f"https://pcrd.tencentbot.top/check/{resp_uuid}"
             await asyncio.sleep(3)
             
-            retry = 10
+            retry = 50
             while retry > 0:
                 retry -= 1
 
