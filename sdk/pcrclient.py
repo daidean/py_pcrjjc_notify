@@ -204,16 +204,14 @@ class PcrClient:
                 time_message = resp_data["maintenance_message"]
                 time_regex = r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}"
 
-                time_end = re.search(time_regex, time_message)
-                assert time_end
-
-                time_end = parse(time_end.group(1))
+                time_list = re.findall(time_regex, time_message)
+                time_end = parse(max(time_list))
                 wait_sec = (time_end - datetime.now()).total_seconds()
 
                 logger.info(f"维护结束时间：{time_end}，等待{wait_sec}秒")
                 await asyncio.sleep(wait_sec)
             except:
-                await asyncio.sleep(60)
+                await asyncio.sleep(60 * 60) # 找不到维护结束时间，则休眠1小时
 
         if is_error and "server_error" in resp_data:
             raise asyncio.CancelledError(resp_data["server_error"])
