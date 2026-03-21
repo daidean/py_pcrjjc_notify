@@ -22,18 +22,15 @@ vim .env
 
 ```python
 # 将WORKWX_WEBHOOK参数替换为实际链接
-WORKWX_WEBHOOK=https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
-
+WorkWX_Webhook=https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
 # 根据需要填写设备ID和类型
 PCR_Device_ID=00ABCD123456ABCD123456ABCD123456
-PCR_Device_Type='Huawei Meta X'
-
+PCR_Device_Name='Huawei Meta X'
 # 填写PCR账号和密码
-PCR_USERNAME=email
-PCR_USERPASS=password
-
+PCR_UserName=email
+PCR_UserPass=password
 # 填写需要监听的用户ID，以英文逗号分隔
-PCR_WATCH_LIST=1234567890000,1234567890001,1234567890002,...
+PCR_Watch_List=1234567890000,1234567890001,1234567890002,...
 ```
 
 ## 2、运行脚本

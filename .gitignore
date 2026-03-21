@@ -4,3 +4,4 @@ __pycache__
 # 私有数据
 .env
 .vscode/
+cache/
