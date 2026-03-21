@@ -1,3 +1,6 @@
+# 缓存目录
 __pycache__
-.venv
+
+# 私有数据
 .env
+.vscode/
