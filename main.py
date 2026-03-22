@@ -1,46 +1,109 @@
 import os
 import asyncio
-import sys
+from pathlib import Path
 
-from dotenv import load_dotenv
+from dotenv import load_dotenv, set_key
 from loguru import logger
 
-from sdk.pcrclient import AccountInfo, BilibiliClient, PcrClient
-from app.verifier import AutoCaptchaVerifier
-from app.notifyer import WorkwxNotifyer
-from app.watcher import RankWatcher
+from app.verify import AutoVerify
+from app.watch import RankWatch
+from app.notify import WorkwxNotify
+from game.pcr import Client as PCRClient
+from game.bilibili import Client as BliClient
 
-logger.remove()
-logger.add(sys.stdout, level="INFO")
+load_dotenv(override=True)
+
+# 企业微信 WebHook
+workwx_webhook = os.environ["WorkWX_Webhook"]
+
+# 监听用户ID清单
+watch_list = [int(uid) for uid in os.environ["PCR_Watch_List"].split(",") if uid]
+
+# 设备信息
+device_info = {
+    "device_id": os.environ["PCR_Device_ID"],
+    "device_name": os.environ["PCR_Device_Name"],
+}
+
+# 账号信息
+user_name = os.environ["PCR_UserName"]
+user_pass = os.environ["PCR_UserPass"]
+
+# 自动过码
+auto_verify = AutoVerify()
+
+
+def format_notify_message(results: list[dict[str, str]]) -> str:
+    def format(result: dict[str, str]):
+        message = f"{result["time"]}\n"
+        if jjc := result["jjc"]:
+            message += f"普通竞技场{jjc}\n"
+        if pjjc := result["pjjc"]:
+            message += f"公主竞技场{pjjc}\n"
+        message += f"{result["name"]} "
+        return message
+
+    return "\n\n".join([format(result) for result in results])
 
 
 async def main():
     logger.info("PCR竞技场排名监听")
 
-    notifyer = WorkwxNotifyer(os.environ["WORKWX_WEBHOOK"])
-    verifier = AutoCaptchaVerifier(notifyer)
+    # BiliBili客户端
+    bli_client = BliClient(user_name, user_pass, auto_verify)
 
-    bili_info = AccountInfo(os.environ["PCR_USERNAME"], os.environ["PCR_USERPASS"])
-    bili_client = BilibiliClient(bili_info, verifier.verify, notifyer.notify)
+    # 尝试获取登录缓存
+    login_info = {}
+    access_token = os.environ.get("PCR_Token")
+    if access_token:
+        access_uid, access_key = access_token.split("|")
+        login_info.update({"access_uid": access_uid, "access_key": access_key})
+    else:
+        logger.warning("客户端: 未找到登录信息缓存")
+        result = await bli_client.login()
 
-    pcr_client = PcrClient(bili_client)
-    watcher = RankWatcher(os.environ["PCR_WATCH_LIST"], pcr_client, notifyer)
+        access_uid = result["uid"]
+        access_key = result["access_key"]
+        login_info.update({"access_uid": access_uid, "access_key": access_key})
 
-    try:
-        logger.info("客户端初始化成功, 排名监听中")
-        await watcher.loop_exec()
-    except (
-        TypeError,
-        KeyboardInterrupt,
-        asyncio.CancelledError,
-    ) as e:
-        logger.error(f"客户端执行异常：{e}")
-        logger.info("PCR竞技场排名监听停止中")
-        watcher.loop_stop()
-        await notifyer.loop_stop()
-        logger.info("PCR竞技场排名监听已停止")
+        access_token = f"{access_uid}|{access_key}"
+        set_key(Path(".env"), key_to_set="PCR_Token", value_to_set=access_token)
+        logger.info("客户端: 登录成功, 信息已缓存")
+
+    # PCR客户端
+    pcr_client = PCRClient(login_info, device_info)
+    # PCR Rank监听器
+    rank_watch = RankWatch(watch_list, pcr_client)
+    # 企业微信通知
+    workwx_notify = WorkwxNotify(workwx_webhook)
+
+    while True:
+        await asyncio.sleep(3)
+
+        if rank_watch.need_login:
+            if is_error := await pcr_client.init_status():
+                # 登录异常时返回异常内容
+                await workwx_notify.notify(f"{is_error}")
+                continue
+            # 登录正常则无返回值
+
+        rank_watch.need_login = False
+
+        try:
+            # 检查所有监听的排名
+            results = await rank_watch.check_ranks()
+            if not results:
+                # 无排名变动，进入下一循环
+                continue
+
+            # 排名变动进行格式化，转给企业微信通知
+            message = format_notify_message(results)
+            await workwx_notify.notify(message)
+
+        except Exception as e:
+            await workwx_notify.notify(repr(e))
+            rank_watch.need_login = False
 
 
 if __name__ == "__main__":
-    load_dotenv(override=True)
     asyncio.run(main())
