@@ -22,10 +22,16 @@ class RankWatch:
         old_rank_jjc = self.ranks[uid]["jjc"]
         old_rank_pjjc = self.ranks[uid]["pjjc"]
 
-        try:
-            profile = await self.client.get_user_profile(uid)
-        except:
-            logger.error(f"排名监控, 用户信息查询接口调用异常 UID: {uid}")
+        retry = 3
+        while retry:
+            retry += 1
+            try:
+                profile = await self.client.get_user_profile(uid)
+                break
+            except:
+                logger.error(f"排名监控, 查询异常 UID: {uid}, 重新查询...{3-retry}")
+                await asyncio.sleep(1)
+        else:
             self.need_login = True
             return None
 
