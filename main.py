@@ -1,7 +1,8 @@
 import os
 import asyncio
-from pathlib import Path
 
+from pathlib import Path
+from datetime import datetime
 from dotenv import load_dotenv, set_key
 from loguru import logger
 
@@ -77,8 +78,14 @@ async def main():
     # 企业微信通知
     workwx_notify = WorkwxNotify(workwx_webhook)
 
+    health = {"total": 0, "error": 0}
     while True:
         await asyncio.sleep(3)
+        
+        health["total"] += 1
+        if datetime.now().timestamp() % 300 < 5:
+            logger.info(f"健康检查: {health}")
+            health = {"total": 0, "error": 0}
 
         if rank_watch.need_login:
             if is_error := await pcr_client.init_status():
@@ -101,6 +108,7 @@ async def main():
             await workwx_notify.notify(message)
 
         except Exception as e:
+            health["error"] += 1
             await workwx_notify.notify(repr(e))
             rank_watch.need_login = False
 
