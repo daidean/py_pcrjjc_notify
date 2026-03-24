@@ -37,10 +37,10 @@ auto_verify = AutoVerify()
 def format_notify_message(results: list[dict[str, str]]) -> str:
     def format(result: dict[str, str]):
         message = f"{result["time"]}\n"
-        if jjc := result["jjc"]:
-            message += f"普通竞技场{jjc}\n"
-        if pjjc := result["pjjc"]:
-            message += f"公主竞技场{pjjc}\n"
+        if "jjc" in result.keys():
+            message += f"普通竞技场{result["jjc"]}\n"
+        if "pjjc" in result.keys():
+            message += f"公主竞技场{result["pjjc"]}\n"
         message += f"{result["name"]} "
         return message
 
@@ -105,7 +105,7 @@ async def main():
 
             # 排名变动进行格式化，转给企业微信通知
             message = format_notify_message(results)
-            await workwx_notify.notify(message)
+            await workwx_notify.notify(f"{message}")
 
         except Exception as e:
             health["error"] += 1
