@@ -106,11 +106,13 @@ async def main():
             # 排名变动进行格式化，转给企业微信通知
             message = format_notify_message(results)
             await workwx_notify.notify(f"{message}")
+            continue
 
         except Exception as e:
             health["error"] += 1
             await workwx_notify.notify(repr(e))
             rank_watch.need_login = False
+            continue
 
 
 if __name__ == "__main__":

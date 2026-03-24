@@ -24,19 +24,19 @@ class RankWatch:
 
         retry = 3
         while retry:
-            retry += 1
+            retry -= 1
             try:
                 profile = await self.client.get_user_profile(uid)
                 break
-            except:
-                logger.error(f"排名监控, 查询异常 UID: {uid}, 重新查询...{3-retry}")
+            except Exception as e:
+                logger.error(f"排名监控, uid: {uid} 查询重试中...{3 - retry} {repr(e)}")
                 await asyncio.sleep(1)
         else:
             self.need_login = True
             return None
 
         if "server_error" in profile.keys():
-            logger.error(f"排名监控, 服务端响应异常: {profile["server_error"]}")
+            logger.error(f"排名监控, 服务端响应异常: {profile['server_error']}")
             self.need_login = True
             return None
 
