@@ -171,5 +171,5 @@ def check_maintenance_time(data: dict[str, Any]) -> float:
         time_end = parse(max(time_list))
         wait_sec = (time_end - datetime.now()).total_seconds()
         return wait_sec  # 找到维护结束时间，则休眠相应间隔
-    except:
+    except Exception:
         return 60 * 60  # 找不到维护结束时间，则休眠1小时
