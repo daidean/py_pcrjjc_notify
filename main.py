@@ -36,12 +36,12 @@ auto_verify = AutoVerify()
 
 def format_notify_message(results: list[dict[str, str]]) -> str:
     def format(result: dict[str, str]):
-        message = f"{result["time"]}\n"
+        message = f"{result['time']}\n"
         if "jjc" in result.keys():
-            message += f"普通竞技场{result["jjc"]}\n"
+            message += f"普通竞技场{result['jjc']}\n"
         if "pjjc" in result.keys():
-            message += f"公主竞技场{result["pjjc"]}\n"
-        message += f"{result["name"]} "
+            message += f"公主竞技场{result['pjjc']}\n"
+        message += f"{result['name']} "
         return message
 
     return "\n\n".join([format(result) for result in results])
@@ -81,18 +81,20 @@ async def main():
     health = {"total": 0, "error": 0}
     while True:
         await asyncio.sleep(3)
-        
         health["total"] += 1
         if datetime.now().timestamp() % 300 < 5:
             logger.info(f"健康检查: {health}")
             health = {"total": 0, "error": 0}
 
         if rank_watch.need_login:
-            if is_error := await pcr_client.init_status():
-                # 登录异常时返回异常内容
-                await workwx_notify.notify(f"{is_error}")
+            try:
+                login_init_error = await pcr_client.init_status()
+                assert not login_init_error, Exception(login_init_error)
+            except Exception as e:
+                health["error"] += 1
+                logger.error(f"登录异常: {repr(e)}")
+                await workwx_notify.notify(f"{repr(e)}")
                 continue
-            # 登录正常则无返回值
 
         rank_watch.need_login = False
 
