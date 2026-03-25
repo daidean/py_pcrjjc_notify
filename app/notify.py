@@ -17,8 +17,10 @@ class WorkwxNotify(Notify):
             "text": {"content": message},
         }
 
-        async with AsyncClient() as client:
-            resp = await client.post(self.webhook, json=post_data)
-            result = resp.json()
-
-        logger.info(f"企业微信: 推送消息 {result}")
+        try:
+            async with AsyncClient() as client:
+                resp = await client.post(self.webhook, json=post_data)
+                result = resp.json()
+            logger.info(f"企业微信: 推送消息 {result} {message.replace('\n', ' ')}")
+        except Exception as e:
+            logger.error(f"企业微信: 推送失败 {repr(e)} {message.replace('\n', ' ')}")
