@@ -82,7 +82,7 @@ async def main():
     while True:
         await asyncio.sleep(3)
         health["total"] += 1
-        if datetime.now().timestamp() % 300 < 5:
+        if datetime.now().timestamp() % 300 < 3:
             logger.info(f"健康检查: {health}")
             health = {"total": 0, "error": 0}
 
