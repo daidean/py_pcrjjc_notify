@@ -1,3 +1,4 @@
+import asyncio
 import re
 import json
 import hashlib
@@ -121,7 +122,7 @@ class Client:
 
         return resp_result["data"]
 
-    async def init_status(self) -> dict[str, str] | None:
+    async def init_status(self) -> None:
         manifest_path = "/source_ini/get_maintenance_status?format=json"
         manifest = await self.call_api(manifest_path, {}, is_crypt=False)
         manifest_ver = manifest["required_manifest_ver"]
@@ -137,8 +138,11 @@ class Client:
             },
         )
 
+        if wait_time := check_maintenance_time(login_info):
+            raise PcrMaintenanceException(login_info, wait_time=wait_time)
+
         if "server_error" in login_info.keys():
-            return login_info["server_error"]
+            raise PcrServerErrorException(login_info)
 
         gamestart = await self.call_api(
             "/check/game_start",
@@ -150,13 +154,25 @@ class Client:
         )
 
         if not gamestart["now_tutorial"]:
-            return gamestart
+            raise PcrGameStartErrorException(gamestart)
 
     async def get_user_profile(self, user_id: int) -> dict[str, Any]:
         return await self.call_api(
             "/profile/get_profile",
             {"target_viewer_id": user_id},
         )
+
+
+class PcrServerErrorException(Exception): ...
+
+
+class PcrGameStartErrorException(Exception): ...
+
+
+class PcrMaintenanceException(Exception):
+    def __init__(self, *args: object, wait_time: float) -> None:
+        super().__init__(*args)
+        self.wait_time = wait_time
 
 
 def check_maintenance_time(data: dict[str, Any]) -> float:

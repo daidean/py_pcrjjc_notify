@@ -11,6 +11,11 @@ from app.watch import RankWatch
 from app.notify import WorkwxNotify
 from game.pcr import Client as PCRClient
 from game.bilibili import Client as BliClient
+from game.pcr import (
+    PcrMaintenanceException,
+    PcrServerErrorException,
+    PcrGameStartErrorException,
+)
 
 load_dotenv(override=True)
 
@@ -88,9 +93,16 @@ async def main():
 
         if rank_watch.need_login:
             try:
-                login_init_error = await pcr_client.init_status()
-                assert not login_init_error, Exception(login_init_error)
-            except Exception as e:
+                await pcr_client.init_status()
+            except PcrMaintenanceException as e:
+                logger.warning(f"系统维护中：{e}")
+                await asyncio.sleep(e.wait_time)
+                continue
+            except (
+                PcrServerErrorException,
+                PcrGameStartErrorException,
+                Exception,
+            ) as e:
                 health["error"] += 1
                 logger.error(f"登录异常: {repr(e)}")
                 await workwx_notify.notify(f"{repr(e)}")
