@@ -64,7 +64,7 @@ class RankWatch:
             result["jjc"] = f"（{diff_rank_jjc}）{old_rank_jjc} → {new_rank_jjc}"
 
         if diff_rank_pjjc != 0:
-            self.ranks[uid]["pjjc"] = new_rank_jjc
+            self.ranks[uid]["pjjc"] = new_rank_pjjc
             result["pjjc"] = f"（{diff_rank_pjjc}）{old_rank_pjjc} → {new_rank_pjjc}"
 
         return result
