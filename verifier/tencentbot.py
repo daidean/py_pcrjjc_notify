@@ -3,10 +3,10 @@ import asyncio
 from httpx import AsyncClient
 from loguru import logger
 
-from game.interface import Verify
+from .interface import Verify
 
 
-class AutoVerify(Verify):
+class TencentBot(Verify):
     endpoint = "https://pcrd.tencentbot.top"
     headers = {
         "Content-Type": "application/json",
@@ -21,26 +21,21 @@ class AutoVerify(Verify):
         url += f"&userid={captch_data["gt_user_id"]}"
         logger.info(f"自动过码中：{url}")
 
-        async with AsyncClient(headers=self.headers) as client:
-            # 发起过码请求
+        async with AsyncClient(headers=self.headers, timeout=10) as client:
             resp = await client.get(url)
             result = resp.json()
             uuid = result["uuid"]
             logger.info(f"自动过码请求已接受：{result}")
 
-            # 过码进度查询地址
             url = f"{self.endpoint}/check/{uuid}"
 
-            # 限制重试次数，避免因过码服务端异常导致死循环
             while self.retry:
                 self.retry -= 1
 
-                # 查询自动过码进度
                 resp = await client.get(url)
                 result = resp.json()
                 logger.info(f"自动过码进展：{result}")
 
-                # 检查过码情况
                 if "info" in result.keys() and "validate" in result["info"]:
                     return result["info"]
 

@@ -50,7 +50,7 @@ class Client:
 
     async def post_data_and_parse_json(self, path: str, data: Any) -> dict[str, Any]:
         url = f"{self.endpoint}{path}"
-        async with AsyncClient(headers=self.headers) as client:
+        async with AsyncClient(headers=self.headers, timeout=10) as client:
             resp = await client.post(url, data=data)
         return resp.json()
 

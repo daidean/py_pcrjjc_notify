@@ -1,10 +1,10 @@
 from httpx import AsyncClient
 from loguru import logger
 
-from game.interface import Notify
+from .interface import Notify
 
 
-class WorkwxNotify(Notify):
+class WeChatWork(Notify):
     def __init__(self, webhook: str):
         self.webhook = webhook
 
@@ -18,7 +18,7 @@ class WorkwxNotify(Notify):
         }
 
         try:
-            async with AsyncClient() as client:
+            async with AsyncClient(timeout=10) as client:
                 resp = await client.post(self.webhook, json=post_data)
                 result = resp.json()
             logger.info(f"企业微信: 推送消息 {result} {message.replace('\n', ' ')}")

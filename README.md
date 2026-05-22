@@ -1,4 +1,4 @@
-# 公主连结 竞技场排名通知 3.0
+# 公主连结 竞技场排名通知 3.1
 
 ## 0、安装依赖
 ```bash
@@ -27,8 +27,8 @@ PCR_Device_Name='Huawei Meta X'
 # 填写PCR账号和密码
 PCR_UserName=email
 PCR_UserPass=password
-# 填写需要监听的用户ID，以英文逗号分隔
-PCR_Watch_List=1234567890000,1234567890001,1234567890002,...
+# 填写需要监听的用户ID
+PCR_Watch_ID=1234567890000
 ```
 
 ## 2、运行脚本
