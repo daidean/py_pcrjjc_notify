@@ -1,18 +1,33 @@
+import os
 from datetime import datetime
 from loguru import logger
+from dotenv import load_dotenv
+
+load_dotenv(override=True)
 
 
 class ChangeEvent:
-    def __init__(self, name: str, time: datetime, jjc: str | None = None, pjjc: str | None = None):
+    def __init__(
+        self, name: str, time: datetime, jjc: str | None = None, pjjc: str | None = None
+    ):
         self.name = name
         self.time = time
         self.jjc = jjc
         self.pjjc = pjjc
 
+    def format_message(self) -> str:
+        msg = f"{self.time}\n"
+        if self.jjc:
+            msg += f"普通竞技场{self.jjc}\n"
+        if self.pjjc:
+            msg += f"公主竞技场{self.pjjc}\n"
+        msg += self.name
+        return msg
+
 
 class RankWatcher:
-    def __init__(self, user_id: int, pcr_client):
-        self.user_id = user_id
+    def __init__(self, pcr_client):
+        self.user_id = int(os.environ["PCR_Watch_ID"])
         self._client = pcr_client
         self._last_jjc = 0
         self._last_pjjc = 0
@@ -27,7 +42,7 @@ class RankWatcher:
 
         if "server_error" in profile:
             logger.error(f"RankWatcher: 服务端响应异常: {profile['server_error']}")
-            return None
+            raise Exception(profile["server_error"])
 
         user_info = profile.get("user_info", {})
         user_name = user_info.get("user_name", "<无名称>")
@@ -41,7 +56,9 @@ class RankWatcher:
         if self._last_jjc == 0 and self._last_pjjc == 0:
             self._last_jjc = new_jjc
             self._last_pjjc = new_pjjc
-            logger.info(f"RankWatcher: 初始排名 jjc={new_jjc} pjjc={new_pjjc} ({user_name})")
+            logger.info(
+                f"RankWatcher: 初始排名 jjc={new_jjc} pjjc={new_pjjc} ({user_name})"
+            )
             return ChangeEvent(
                 name=user_name,
                 time=datetime.now(),

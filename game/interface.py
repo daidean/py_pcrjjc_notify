@@ -1,13 +1,7 @@
-from abc import ABC, abstractmethod
+from notifier.interface import Notify
+from verifier.interface import Verify
 
-
-# 验证码校验接口
-class Verify(ABC):
-    @abstractmethod
-    async def verify(self, captch_data: dict[str, str]) -> dict[str, str]: ...
-
-
-# 消息通知接口
-class Notify(ABC):
-    @abstractmethod
-    async def notify(self, message: str) -> None: ...
+__all__ = [
+    "Notify",
+    "Verify",
+]

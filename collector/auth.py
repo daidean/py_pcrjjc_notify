@@ -1,7 +1,7 @@
 import os
 
 from pathlib import Path
-from dotenv import set_key
+from dotenv import load_dotenv, set_key
 from loguru import logger
 
 from game.bilibili import Client as BiliClient
@@ -11,18 +11,17 @@ from game.pcr import (
 )
 from verifier.interface import Verify
 
+load_dotenv(override=True)
+
 
 class AuthManager:
-    def __init__(
-        self,
-        username: str,
-        password: str,
-        device_info: dict[str, str],
-        verifier: Verify,
-    ):
-        self.username = username
-        self.password = password
-        self.device_info = device_info
+    def __init__(self, verifier: Verify):
+        self.username = os.environ["PCR_UserName"]
+        self.password = os.environ["PCR_UserPass"]
+        self.device_info = {
+            "device_id": os.environ["PCR_Device_ID"],
+            "device_name": os.environ["PCR_Device_Name"],
+        }
         self.verifier = verifier
         self.pcr_client: PCRClient | None = None
         self._failure_count = 0
