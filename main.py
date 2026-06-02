@@ -24,7 +24,7 @@ async def main():
     pcrclient = PcrClient(amer)
     watcher = RankWatcher(pcrclient)
 
-    errors = 0
+    error_total = 0
     hearbeat_total = 0
 
     while True:
@@ -34,10 +34,10 @@ async def main():
         if hearbeat_total >= HEARTBEAT_INTERVAL:
             retries = pcrclient.retries
             hearbeat_message = "心跳"
-            hearbeat_message += f"| 正常: {hearbeat_total - errors} "
-            hearbeat_message += f"| 异常: {errors} | 重试: {retries}"
+            hearbeat_message += f"| 正常: {hearbeat_total - error_total} "
+            hearbeat_message += f"| 异常: {error_total} | 重试: {retries}"
             logger.info(hearbeat_message)
-            errors = 0
+            error_total = 0
             hearbeat_total = 0
             pcrclient.retries = 0
 
@@ -48,9 +48,9 @@ async def main():
             await asyncio.sleep(e.wait_time)
             continue
         except Exception as e:
-            errors += 1
+            error_total += 1
             logger.error(f"认证异常: {repr(e)}")
-            await notifier.notify(f"{repr(e)}")
+            await notifier.notify(f"认证异常: {repr(e)}")
             continue
 
         try:
@@ -60,9 +60,9 @@ async def main():
             await asyncio.sleep(e.wait_time)
             continue
         except Exception as e:
-            errors += 1
-            await notifier.notify(repr(e))
-            continue
+            logger.error(f"查询异常: {repr(e)}")
+            await notifier.notify(f"查询异常: {repr(e)}")
+            break
 
         if event:
             message = event.format_message()
